@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crocs World Clock</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f5f4f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    .header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .live-time {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .slider-row label {
+      font-size: 13px;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .slider-row input[type=range] {
+      flex: 1;
+      min-width: 160px;
+      accent-color: #1D9E75;
+    }
+
+    .slider-out {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a1a;
+      min-width: 80px;
+    }
+
+    .reset-btn {
+      font-size: 12px;
+      padding: 5px 12px;
+      cursor: pointer;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #ddd;
+      color: #555;
+      transition: background 0.15s;
+    }
+
+    .reset-btn:hover { background: #eee; }
+
+    .region-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 1.5rem 0 0.6rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 8px;
+      margin-bottom: 0.25rem;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e8e6e0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      transition: box-shadow 0.15s;
+    }
+
+    .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+
+    .card.home {
+      border: 2px solid #1D9E75;
+    }
+
+    .card-city { font-size: 13px; font-weight: 500; color: #333; margin-bottom: 1px; }
+    .card-country { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+    .card-time { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; letter-spacing: -0.5px; }
+    .card-date { font-size: 11px; color: #bbb; margin-bottom: 8px; }
+
+    .pill {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .pill-work  { background: #E1F5EE; color: #0F6E56; }
+    .pill-sleep { background: #f1efe8; color: #888; }
+    .pill-early { background: #FAEEDA; color: #854F0B; }
+    .pill-eve   { background: #EEEDFE; color: #534AB7; }
+    .pill-home  { background: #E1F5EE; color: #0F6E56; }
+
+    .footer {
+      margin-top: 3rem;
+      font-size: 11px;
+      color: #ccc;
+      text-align: center;
+    }
+
+    /* -------------------------------------------------------
+       PARA AGREGAR UNA CIUDAD:
+       Buscá el array "zones" más abajo y copiá una línea,
+       por ejemplo:
+         { region: "LATAM - Cono Sur", city: "Montevideo", country: "Uruguay", tz: "America/Montevideo" },
+       Las zonas horarias válidas las encontrás en:
+       https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+    ------------------------------------------------------- */
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <span class="title">Crocs world clock</span>
+    <span class="live-time" id="live-time"></span>
+  </div>
+
+  <div class="slider-row">
+    <label>Simular hora Amsterdam:</label>
+    <input type="range" id="hour-slider" min="-1" max="23" step="1" value="-1">
+    <span class="slider-out" id="slider-label">Ahora</span>
+    <button class="reset-btn" onclick="resetToNow()">↺ Ahora</button>
+  </div>
+
+  <div id="zones-container"></div>
+
+  <div class="footer">crocs-world-clock · editá las ciudades en el array "zones" de este archivo</div>
+</div>
+
+<script>
+// -------------------------------------------------------
+// CIUDADES — editá esta lista libremente.
+// Campos:
+//   region:  el grupo donde aparece la tarjeta
+//   city:    nombre que se muestra
+//   country: país que se muestra
+//   tz:      zona horaria (de la lista de Wikipedia arriba)
+//   home:    true solo para tu ciudad base (máximo 1)
+// -------------------------------------------------------
+const zones = [
+  { region: "Base",                  city: "Amsterdam",       country: "Países Bajos",    tz: "Europe/Amsterdam",                  home: true },
+  { region: "LATAM - Cono Sur",      city: "Buenos Aires",    country: "Argentina",        tz: "America/Argentina/Buenos_Aires" },
+  { region: "LATAM - Cono Sur",      city: "Santiago",        country: "Chile",            tz: "America/Santiago" },
+  { region: "LATAM - Cono Sur",      city: "São Paulo",       country: "Brasil",           tz: "America/Sao_Paulo" },
+  { region: "LATAM - Cono Sur",      city: "Bogotá",          country: "Colombia",         tz: "America/Bogota" },
+  { region: "LATAM - Cono Sur",      city: "Lima",            country: "Perú",             tz: "America/Lima" },
+  { region: "LATAM - México & CA",   city: "Ciudad de México",country: "México",           tz: "America/Mexico_City" },
+  { region: "LATAM - México & CA",   city: "Guatemala",       country: "Guatemala",        tz: "America/Guatemala" },
+  { region: "LATAM - México & CA",   city: "San José",        country: "Costa Rica",       tz: "America/Costa_Rica" },
+  { region: "USA",                   city: "Miami / New York",country: "EE.UU. Este",      tz: "America/New_York" },
+  { region: "USA",                   city: "Los Angeles",     country: "EE.UU. Oeste",     tz: "America/Los_Angeles" },
+  { region: "Middle East",           city: "Dubai",           country: "EAU",              tz: "Asia/Dubai" },
+  { region: "Middle East",           city: "Riad",            country: "Arabia Saudita",   tz: "Asia/Riyadh" },
+  { region: "SEA",                   city: "Singapur",        country: "Singapur",         tz: "Asia/Singapore" },
+  { region: "SEA",                   city: "Bangkok",         country: "Tailandia",        tz: "Asia/Bangkok" },
+];
+
+// -------------------------------------------------------
+// No es necesario tocar nada debajo de esta línea
+// -------------------------------------------------------
+
+let offsetHours = null;
+
+function getStatus(hour) {
+  if (hour >= 9 && hour < 18) return { label: "laboral",  cls: "pill-work"  };
+  if (hour >= 18 && hour < 21) return { label: "tarde",   cls: "pill-eve"   };
+  if (hour >= 6  && hour < 9 ) return { label: "temprano",cls: "pill-early" };
+  return                               { label: "noche",   cls: "pill-sleep" };
+}
+
+function pad(n) { return String(n).padStart(2, "0"); }
+
+function getTimeInTZ(tz, baseDate) {
+  const opts = { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short", day: "numeric", month: "short" };
+  const parts = new Intl.DateTimeFormat("es", opts).formatToParts(baseDate);
+  const map = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+  return {
+    time: map.hour + ":" + map.minute,
+    hour: parseInt(map.hour),
+    date: map.weekday + " " + map.day + " " + map.month
+  };
+}
+
+function render() {
+  const now  = new Date();
+  const base = offsetHours !== null
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), offsetHours, 0, 0)
+    : now;
+
+  if (offsetHours === null) {
+    document.getElementById("live-time").textContent =
+      "en vivo · " + now.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Amsterdam" });
+  }
+
+  const grouped = {};
+  zones.forEach(z => {
+    if (!grouped[z.region]) grouped[z.region] = [];
+    grouped[z.region].push(z);
+  });
+
+  const container = document.getElementById("zones-container");
+  container.innerHTML = "";
+
+  for (const [region, items] of Object.entries(grouped)) {
+    const label = document.createElement("div");
+    label.className = "region-label";
+    label.textContent = region;
+    container.appendChild(label);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    items.forEach(z => {
+      const t      = getTimeInTZ(z.tz, base);
+      const status = z.home ? { label: "tu base", cls: "pill-home" } : getStatus(t.hour);
+      const card   = document.createElement("div");
+      card.className = "card" + (z.home ? " home" : "");
+      card.innerHTML =
+        '<div class="card-city">'    + z.city    + '</div>' +
+        '<div class="card-country">' + z.country + '</div>' +
+        '<div class="card-time">'    + t.time    + '</div>' +
+        '<div class="card-date">'    + t.date    + '</div>' +
+        '<span class="pill '         + status.cls + '">' + status.label + '</span>';
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+  }
+}
+
+function resetToNow() {
+  offsetHours = null;
+  document.getElementById("hour-slider").value = -1;
+  document.getElementById("slider-label").textContent = "Ahora";
+  render();
+}
+
+document.getElementById("hour-slider").addEventListener("input", function() {
+  const v = parseInt(this.value);
+  if (v === -1) { resetToNow(); return; }
+  offsetHours = v;
+  document.getElementById("slider-label").textContent = pad(v) + ":00 NL";
+  render();
+});
+
+render();
+setInterval(() => { if (offsetHours === null) render(); }, 1000);
+</script>
+</body>
+</html>
